@@ -36,6 +36,9 @@ class MyForm(QtGui.QMainWindow):
 		self.ui = ui.Ui_ShotgunVersionWindow()
 		self.ui.setupUi(self)
 
+		# project setting
+		self.frameRate = 24
+
 		# logo
 		self.iconDir = os.path.dirname(moduleDir).replace('\\', '/')
 		self.logo = 'logo.png'
@@ -44,6 +47,7 @@ class MyForm(QtGui.QMainWindow):
 		self.xIcon = 'x_icon.png'
 		self.ipIcon = 'ip_icon.png'
 		self.needAttention = 'attention_icon.png'
+		self.convertIcon = 'convert_icon.png'
 
 		# column
 		self.statusColumn = 0
@@ -74,6 +78,7 @@ class MyForm(QtGui.QMainWindow):
 		self.shotVersionInfo = dict()
 		self.shotInfo = dict()
 		self.serverShotInfo = dict()
+		self.publishInfo = dict()
 		self.allInfo = dict()
 
 
@@ -277,36 +282,40 @@ class MyForm(QtGui.QMainWindow):
 		seqs = fileUtils.listFolder(serverPath)
 
 		for eachSeq in seqs : 
-			browseShot = '%s/%s' % (serverPath, eachSeq)
-			shots = fileUtils.listFolder(browseShot)
 
-			for eachShot in shots : 
-				browseDep = '%s/%s' % (browseShot, eachShot)
-				deps = fileUtils.listFolder(browseDep)
+			if eachSeq.startswith('sq') : 
+				browseShot = '%s/%s' % (serverPath, eachSeq)
+				shots = fileUtils.listFolder(browseShot)
 
-				for eachDep in deps : 
-					browseFile = '%s/%s' % (browseDep, eachDep)
-					files = fileUtils.listFile(browseFile)
-					maxVersion = None
+				for eachShot in shots : 
+					if eachShot.startswith('sh') : 
+						browseDep = '%s/%s' % (browseShot, eachShot)
+						deps = fileUtils.listFolder(browseDep)
 
-					for eachFile in files : 
-						version = self.findVersion(eachFile)
-						dep = eachFile.split('_')[-1].split('.')[0]
+						for eachDep in deps : 
+							browseFile = '%s/%s' % (browseDep, eachDep)
+							files = fileUtils.listFile(browseFile)
+							maxVersion = None
 
-						if version > max : 
-							maxVersion = eachFile
+							for eachFile in files : 
+								version = self.findVersion(eachFile)
+								dep = eachFile.split('_')[-1].split('.')[0]
 
-					if maxVersion : 
-						shotName = ('_').join(maxVersion.split('_')[1:4])
+								if version > max : 
+									maxVersion = eachFile
 
-						if not shotName in publishInfo.keys() : 
-							publishInfo[shotName] = {dep: maxVersion, 'path': browseFile}
+							if maxVersion : 
+								shotName = ('_').join(maxVersion.split('_')[1:4])
 
-						else : 
-							if not dep in publishInfo[shotName].keys() : 
-								publishInfo[shotName].update({dep: maxVersion, 'path': browseFile})
+								if not shotName in publishInfo.keys() : 
+									publishInfo[shotName] = {dep: maxVersion, 'path': browseFile}
+
+								else : 
+									if not dep in publishInfo[shotName].keys() : 
+										publishInfo[shotName].update({dep: maxVersion, 'path': browseFile})
 
 
+		self.publishInfo = publishInfo
 		return publishInfo
 		# for each in sorted(publishInfo) : 
 		# 	print each, publishInfo[each]
@@ -428,7 +437,7 @@ class MyForm(QtGui.QMainWindow):
 							if dep in publishVersionInfo[shotName].keys() : 
 								publishMovie = publishVersionInfo[shotName][dep]
 								path = publishVersionInfo[shotName]['path']
-								publishPath = '%s/%s' % (publishMovie, path)
+								publishPath = '%s/%s' % (path, publishMovie)
 
 							# if dep = layout, try looking for anim
 							elif dep == 'layout' : 
@@ -436,7 +445,7 @@ class MyForm(QtGui.QMainWindow):
 									serverMovie = serverVersionInfo[shotName]['anim']
 									dep = 'anim'
 									path = publishVersionInfo[shotName]['path']
-									publishPath = '%s/%s' % (publishMovie, path)
+									publishPath = '%s/%s' % (path, publishMovie)
 									# updateTask = self.getUpdateTaskSG(shotName)
 									updateTask = 'findTaskSG'
 
@@ -480,13 +489,13 @@ class MyForm(QtGui.QMainWindow):
 					if 'anim' in publishMovieInfo.keys() : 
 						publishMovie = publishMovieInfo['anim']
 						path = publishVersionInfo[shotName]['path']
-						publishPath = '%s/%s' % (publishMovie, path)
+						publishPath = '%s/%s' % (path, publishMovie)
 						dep = 'anim'
 
 					elif 'layout' in publishMovieInfo.keys() : 
 						publishMovie = publishMovieInfo['layout']
 						path = publishVersionInfo[shotName]['path']
-						publishPath = '%s/%s' % (publishMovie, path)
+						publishPath = '%s/%s' % (path, publishMovie)
 						dep = 'layout'
 
 			# compare shotgun and server version
@@ -506,17 +515,18 @@ class MyForm(QtGui.QMainWindow):
 
 				else : 
 					action = '-'
+					print 'shotName', shotName
 
 			# looking for other versions
-			else : 
-				# see version
-				uploadVersion = self.findVersion(uploadMovie)
-				serverVersion = self.findVersion(serverMovieName)
-				publishVersion = self.findVersion(publishMovie)
+			# see version
+			uploadVersion = self.findVersion(uploadMovie)
+			serverVersion = self.findVersion(serverMovieName)
+			publishVersion = self.findVersion(publishMovie)
 
 
-				# if both of them return version
-				if uploadVersion and serverVersion : 
+			# if both of them return version
+			if uploadVersion : 
+				if serverVersion and not publishVersion : 
 
 					# if server is newer
 					if int(serverVersion) > int(uploadVersion) : 
@@ -539,71 +549,135 @@ class MyForm(QtGui.QMainWindow):
 						nameColor = statusColor
 						statusIcon = 'needAttention'
 
-				# there is only uploadVersion file 
-				elif uploadVersion : 
-					# looking for publish version
-					if publishVersion : 
-						if int(publishVersion) == int(uploadVersion) : 
-							action = 'Good'
-							statusColor = self.green
-							statusColor2 = self.lightGreen
-							nameColor = statusColor
-							statusIcon = 'ok'
+				# looking for publish version
+				if publishVersion and not serverVersion: 
+					if int(publishVersion) == int(uploadVersion) : 
+						action = 'Good'
+						statusColor = self.green
+						statusColor2 = self.lightGreen
+						nameColor = statusColor
+						statusIcon = 'ok'
 
-						if int(publishVersion) > int(uploadVersion) : 
-							action = 'Need upload*'
-							statusColor = self.orange
-							statusColor2 = self.lightOrange
-							convert = 'Yes'
-							convertColor = self.green
-							nameColor = statusColor
+					if int(publishVersion) > int(uploadVersion) : 
+						action = 'Need upload*'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						convert = 'Yes'
+						convertColor = self.green
+						nameColor = statusColor
+						updateTask = 'findTaskSG'
 
-							if dep == 'anim' : 
-								statusIcon = 'ready'
+						if dep == 'anim' : 
+							statusIcon = 'ready'
 
-							if dep == 'layout' : 
-								statusIcon = 'needAttention'
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
 
-						elif int(publishVersion) < int(uploadVersion) : 
-							action = 'Shotgun newer'
-							statusColor = self.yellow
-							statusColor2 = self.lightYellow
-							nameColor = statusColor
-							statusIcon = 'ok'
+					elif int(publishVersion) < int(uploadVersion) : 
+						action = 'Shotgun newer'
+						statusColor = self.yellow
+						statusColor2 = self.lightYellow
+						nameColor = statusColor
+						statusIcon = 'ok'
 
-					# no publish version
-					else : 
+				if serverVersion and publishVersion : 
+					if int(serverVersion) > int(publishVersion) : 
 						action = 'Good*2'
 						statusColor = self.green
 						statusColor2 = self.lightGreen
 						nameColor = statusColor
 						statusIcon = 'ok'
 
-				elif serverVersion : 
-					action = 'Need upload'
-					statusColor = self.orange
-					statusColor2 = self.lightOrange
-					nameColor = statusColor
+					if int(serverVersion) < int(publishVersion) : 
+						action = 'Need upload*'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						convert = 'Yes'
+						convertColor = self.green
+						nameColor = statusColor
+						updateTask = 'findTaskSG'
 
-					if dep == 'anim' : 
-						statusIcon = 'ready'
+						if dep == 'anim' : 
+							statusIcon = 'ready'
 
-					if dep == 'layout' : 
-						statusIcon = 'needAttention'
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
 
-				elif publishVersion : 
-					action = 'Need upload'
-					statusColor = self.orange
-					statusColor2 = self.lightOrange
-					nameColor = statusColor
-
-					if dep == 'anim' : 
-						statusIcon = 'ready'
-
-					if dep == 'layout' : 
-						statusIcon = 'needAttention'
-
+				# no publish version
 				else : 
+					action = 'Good*2'
+					statusColor = self.green
+					statusColor2 = self.lightGreen
+					nameColor = statusColor
+					statusIcon = 'ok'
+
+			else : 
+				if serverVersion and not publishVersion : 
+					action = 'Need upload'
+					statusColor = self.orange
+					statusColor2 = self.lightOrange
+					nameColor = statusColor
+
+					if dep == 'anim' : 
+						statusIcon = 'ready'
+
+					if dep == 'layout' : 
+						statusIcon = 'needAttention'
+
+				if publishVersion and not serverVersion : 
+					action = 'Need upload*'
+					statusColor = self.orange
+					statusColor2 = self.lightOrange
+					nameColor = statusColor
+					convert = 'Yes'
+					convertColor = self.green
+					updateTask = 'findTaskSG'
+
+					if dep == 'anim' : 
+						statusIcon = 'ready'
+
+					if dep == 'layout' : 
+						statusIcon = 'needAttention'
+
+				if publishVersion and serverVersion : 
+					if int(serverVersion) > int(publishVersion) : 
+						action = 'Good*2'
+						statusColor = self.green
+						statusColor2 = self.lightGreen
+						nameColor = statusColor
+						statusIcon = 'ok'
+
+
+					if int(serverVersion) < int(publishVersion) : 
+						action = 'Need upload*'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						convert = 'Yes'
+						convertColor = self.green
+						nameColor = statusColor
+						updateTask = 'findTaskSG'
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+
+
+					else : 
+						action = 'Need upload'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						nameColor = statusColor
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+							
+
+				if not uploadMovie == '-' : 
 					action = 'SG wrong naming'
 					statusColor = self.red
 					statusColor2 = self.lightRed
@@ -623,10 +697,35 @@ class MyForm(QtGui.QMainWindow):
 						'task': {'text': updateTask, 'color': statusColor2}
 					}
 
-			self.fillData(row, datas, mode)
-			self.allInfo[shotName] = {'serverMovie': serverMovie, 'publishMovie': publishPath}
+			keywords = []
+			filter1 = 'anim'
+			filter2 = 'layout'
+			filter3 = 'comp'
+			noFilter = '-'
 
-			row += 1 
+			anim = self.ui.anim_checkBox.isChecked()
+			layout = self.ui.layout_checkBox.isChecked()
+			comp = self.ui.comp_checkBox.isChecked()
+
+			if anim : 
+				keywords.append(filter1)
+
+			if layout : 
+				keywords.append(filter2)
+
+			if comp : 
+				keywords.append(filter3)
+
+			if not keywords : 
+				keywords = [dep]
+
+			if dep in keywords : 
+				self.fillData(row, datas, mode)
+				self.allInfo[shotName] = {'serverMovie': serverMovie, 'publishMovie': publishPath}
+				# self.allInfo[shotName].update(datas)
+
+				row += 1
+
 
 		self.ui.status_label.setText('')
 		QtGui.QApplication.processEvents()
@@ -679,35 +778,45 @@ class MyForm(QtGui.QMainWindow):
 			task = tasks[i]
 			convert = converts[i]
 
-			if shotName in self.serverShotInfo.keys() : 
-				self.serverShotInfo[shotName]
+			# if shotName in self.serverShotInfo.keys() : 
+			# 	self.serverShotInfo[shotName]
 
-				step = steps[i]
+			step = steps[i]
 
-				if action == 'Need upload' : 
-					if step == 'anim' : 
+			if action == 'Need upload' : 
+				if step == 'anim' : 
+					try : 
 						self.setStatus(row, 'ip', True)
-						self.updateSG(shotName, serverFile, task)
+						self.updateSG(shotName, serverFile, task, 'serverMovie')
 						self.listData('refresh')
 
-					if step == 'layout' : 
-						if not allItem : 
-							self.completeDialog('Warning', 'Skip update layout')
+					except Exception as error : 
+						print error
+						self.setStatus(row, 'x', True)
 
-				if action == 'Need upload*' : 
-					pass
-					# if step == 'anim' : 
-					# 	self.convertMov()
-					# 	self.updateSG()
-					# 	# self.setStatus()
-					# 	self.listData('refresh')
+				if step == 'layout' : 
+					if not allItem : 
+						self.completeDialog('Warning', 'Skip update layout')
+
+			if action == 'Need upload*' : 
+				if step == 'anim' : 
+					self.setStatus(row, 'convert', True)
+					convertFile = self.convertMov(shotName)
+
+					if convertFile : 
+						self.setStatus(row, 'ip', True)
+						self.updateSG(shotName, convertFile, task, 'publishMovie')
+						self.listData('refresh')
+
+					else : 
+						print 'No file'
 
 					# if step == 'layout' : 
 					# 	self.completeDialog('Warning', 'Skip update layout')
 
-			else : 
-				if not allItem : 
-					self.completeDialog('Error', 'No data for this shot')
+			# else : 
+			# 	if not allItem : 
+			# 		self.completeDialog('Error', 'No data for this shot')
 
 			row += 1
 			i += 1
@@ -786,19 +895,24 @@ class MyForm(QtGui.QMainWindow):
 		return updateTask
 
 
-	def updateSG(self, shotName, movieFile, task) : 
+	def updateSG(self, shotName, movieFile, task, movieType) : 
 
 		taskID = None
 		shotID = None
 		setTaskStatus = 'rev'
-		versionName = movieFile.replace('.mov', '')
+		versionName = os.path.basename(movieFile).replace('.mov', '')
 		projectName = self.getProjectName()
 
 		if task == 'findTaskSG' : 
 			task = self.getUpdateTaskSG(shotName)
 
 		if shotName in self.allInfo.keys() : 
-			movieFile = self.allInfo[shotName]['serverMovie']
+			if movieType == 'serverMovie' : 
+				movieFile = self.allInfo[shotName]['serverMovie']
+
+			if movieType == 'publishMovie' : 
+				movieFile = movieFile
+
 			movieFile = movieFile.replace('/', '\\')
 
 			# if shotName has version, get taskID, shotID from version data
@@ -834,9 +948,12 @@ class MyForm(QtGui.QMainWindow):
 						self.completeDialog('Error', 'Cannot find task ID')
 
 
-
 	def updateSGCmd(self, projectName, versionName, shotID, taskID, movieFile, status) : 
-		print versionName, shotID, taskID, movieFile, status
+		print 'versionName', versionName
+		print 'shotID', shotID
+		print 'taskID', taskID
+		print 'movieFile', movieFile
+		print 'status', status
 
 		proj = sgUtils.sg.find_one('Project', [['name', 'is', projectName]])
 
@@ -855,6 +972,7 @@ class MyForm(QtGui.QMainWindow):
 		QtGui.QApplication.processEvents()
 
 		self.ui.status_label.setText('Uploading movie ...')
+		print 'Uploading movie ...'
 		result2 = sgUtils.sg.upload('Version', result['id'], movieFile.replace('/', '\\'), 'sg_uploaded_movie')
 		print 'Upload movie %s success' % movieFile
 		print '=================================='
@@ -943,6 +1061,10 @@ class MyForm(QtGui.QMainWindow):
 		# self.ui.shotgun_tableWidget.resizeColumnToContents(self.publishColumn)
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.convertColumn)
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.actionColumn)
+		# self.ui.shotgun_tableWidget.setColumnHidden(self.publishColumn, True)
+		# self.ui.shotgun_tableWidget.setColumnHidden(self.stepColumn, True)
+		# self.ui.shotgun_tableWidget.setColumnHidden(self.taskColumn, True)
+		# self.ui.shotgun_tableWidget.setColumnHidden(self.convertColumn, True)
 
 
 
@@ -976,6 +1098,9 @@ class MyForm(QtGui.QMainWindow):
 		if status == 'needAttention' : 
 			iconPath = '%s/icons/%s' % (self.iconDir, self.needAttention)
 
+		if status == 'convert' : 
+			iconPath = '%s/icons/%s' % (self.iconDir, self.convertIcon)
+
 		iconPath = iconPath.replace('/', '\\')
 
 		self.fillInTableIcon(row, column, text, iconPath, widget, [255, 255, 255])
@@ -999,7 +1124,7 @@ class MyForm(QtGui.QMainWindow):
 
 	def getProjectName(self) : 
 		projectName = str(self.ui.project_comboBox.currentText())
-		# projectName = 'ttv_e100'
+		projectName = 'ttv_e100'
 
 		return projectName
 
@@ -1095,6 +1220,40 @@ class MyForm(QtGui.QMainWindow):
 
 	def completeDialog(self, title, dialog) : 
 		QtGui.QMessageBox.information(self, title, dialog, QtGui.QMessageBox.Ok)
+
+
+
+	# convertion part ===========================================================================
+
+
+	def convertMov(self, shotName) : 
+		project = self.getProjectName()
+		episode = project.split('_')[-1]
+		serverPath = '%s/ttv/%s/shotgun' % (self.mediaPath, episode) 
+		inputFile = self.allInfo[shotName]['publishMovie']
+		fileName = os.path.basename(inputFile)
+		outputFile = '%s/%s' % (serverPath, fileName)
+
+		print inputFile, outputFile
+
+		if not os.path.exists(outputFile) : 
+			self.convertCmd(inputFile, outputFile, self.frameRate)
+
+			if os.path.exists(outputFile) : 
+				return outputFile
+
+		else : 
+			print 'file exists -> skip'
+
+
+
+	def convertCmd(self, inputFile, outputFile, frameRate) : 
+		convertorPath = 'U:/applications/ffmpeg/win/ffmpeg.exe'
+		src = inputFile.replace('/', '\\')
+		dst = outputFile.replace('/', '\\')
+		cmd = '"%s" -y -i %s -r %s -vcodec libx264 -vprofile baseline -crf 22 -bf 0 -pix_fmt yuv420p -f mov %s' % (convertorPath.replace('/', '\\'), src, frameRate, dst)
+
+		os.system(cmd)
 
 
 

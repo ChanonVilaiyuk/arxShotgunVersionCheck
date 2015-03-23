@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'U:/extensions/studioTools/python/arxShotgunVersionCheck/ui2.ui'
+# Form implementation generated from reading ui file 'U:/extensions/studioTools/python/arxShotgunVersionCheck/ui.ui'
 #
-# Created: Sat Mar 21 10:18:49 2015
+# Created: Wed Mar 18 00:48:29 2015
 #      by: pyside-uic 0.2.14 running on PySide 1.2.0
 #
 # WARNING! All changes made in this file will be lost!
@@ -60,23 +60,6 @@ class Ui_ShotgunVersionWindow(object):
         self.frame.setObjectName("frame")
         self.verticalLayout_2 = QtGui.QVBoxLayout(self.frame)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.frame_3 = QtGui.QFrame(self.frame)
-        self.frame_3.setFrameShape(QtGui.QFrame.Box)
-        self.frame_3.setFrameShadow(QtGui.QFrame.Sunken)
-        self.frame_3.setObjectName("frame_3")
-        self.horizontalLayout_3 = QtGui.QHBoxLayout(self.frame_3)
-        self.horizontalLayout_3.setContentsMargins(-1, 4, -1, 4)
-        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.anim_checkBox = QtGui.QCheckBox(self.frame_3)
-        self.anim_checkBox.setObjectName("anim_checkBox")
-        self.horizontalLayout_3.addWidget(self.anim_checkBox)
-        self.layout_checkBox = QtGui.QCheckBox(self.frame_3)
-        self.layout_checkBox.setObjectName("layout_checkBox")
-        self.horizontalLayout_3.addWidget(self.layout_checkBox)
-        self.comp_checkBox = QtGui.QCheckBox(self.frame_3)
-        self.comp_checkBox.setObjectName("comp_checkBox")
-        self.horizontalLayout_3.addWidget(self.comp_checkBox)
-        self.verticalLayout_2.addWidget(self.frame_3)
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.label = QtGui.QLabel(self.frame)
@@ -140,9 +123,6 @@ class Ui_ShotgunVersionWindow(object):
         self.logo_label.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "-", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Project", None, QtGui.QApplication.UnicodeUTF8))
         self.getData_pushButton.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Scan Shot", None, QtGui.QApplication.UnicodeUTF8))
-        self.anim_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Anim", None, QtGui.QApplication.UnicodeUTF8))
-        self.layout_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Layout", None, QtGui.QApplication.UnicodeUTF8))
-        self.comp_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Comp", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Shotgun Shot list", None, QtGui.QApplication.UnicodeUTF8))
         self.shotgun_tableWidget.horizontalHeaderItem(0).setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Status", None, QtGui.QApplication.UnicodeUTF8))
         self.shotgun_tableWidget.horizontalHeaderItem(1).setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Action", None, QtGui.QApplication.UnicodeUTF8))

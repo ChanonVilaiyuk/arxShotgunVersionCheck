@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'U:\extensions\studioTools\python\arxShotgunVersionCheck\ui.ui'
 #
-# Created: Sat Mar 14 23:03:12 2015
+# Created: Wed Mar 18 22:58:37 2015
 #      by: PyQt4 UI code generator 4.9.5
 #
 # WARNING! All changes made in this file will be lost!
