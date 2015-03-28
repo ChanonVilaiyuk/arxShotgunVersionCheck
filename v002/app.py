@@ -15,7 +15,7 @@ sys.path.append('U:/extensions/python/2.7/win64/site-packages')
 from PySide import QtCore
 from PySide import QtGui
 
-from arxShotgunVersionCheck import ui3 as ui
+from arxShotgunVersionCheck import ui2 as ui
 reload(ui)
 
 from sgUtils import sgUtils
@@ -80,13 +80,6 @@ class MyForm(QtGui.QMainWindow):
 		self.serverShotInfo = dict()
 		self.publishInfo = dict()
 		self.allInfo = dict()
-		self.actionList = []
-
-		self.serverVersionInfo = dict()
-		self.publishVersionInfo = dict()
-		self.sgVersionInfo = dict()
-
-		self.task = {'anim': ['anim_splining', 'anim_blocking'], 'comp': ['compositing'], 'layout': []}
 
 
 		self.initFunctions()
@@ -97,7 +90,6 @@ class MyForm(QtGui.QMainWindow):
 	def initFunctions(self) : 
 		self.setLogo()
 		self.listProjects()
-		self.listFilter()
 		self.resizeColumn()
 
 
@@ -105,11 +97,6 @@ class MyForm(QtGui.QMainWindow):
 	def initConnections(self) : 
 		self.ui.getData_pushButton.clicked.connect(self.doScanShot)
 		self.ui.update_pushButton.clicked.connect(self.doUpdate)
-		self.ui.showAll_checkBox.stateChanged.connect(self.refreshUI)
-		self.ui.layout_radioButton.toggled.connect(self.refreshUI)
-		self.ui.anim_radioButton.toggled.connect(self.refreshUI)
-		self.ui.composite_radioButton.toggled.connect(self.refreshUI)
-		self.ui.filter_comboBox.currentIndexChanged.connect(self.refreshUI)
 
 
 
@@ -125,33 +112,7 @@ class MyForm(QtGui.QMainWindow):
 			projectList.append(projectName)
 
 		for eachProject in sorted(projectList) :
-			self.ui.project_comboBox.addItem(eachProject)
-
-
-
-	def listFilter(self) : 
-		self.ui.filter_comboBox.clear()
-		self.ui.filter_comboBox.addItem('All actions')
-
-
-	def setFilterComboBox(self) : 
-		currentItem = str(self.ui.filter_comboBox.currentText())
-		self.ui.filter_comboBox.currentIndexChanged.disconnect(self.refreshUI)
-		self.ui.filter_comboBox.clear()
-		self.ui.filter_comboBox.addItem('All actions')
-		i = 0
-		index = 0
-
-		for each in sorted(self.actionList) : 
-			self.ui.filter_comboBox.addItem(each)
-
-			if currentItem == each : 
-				index = i + 1
-
-			i += 1
-
-		self.ui.filter_comboBox.setCurrentIndex(index)
-		self.ui.filter_comboBox.currentIndexChanged.connect(self.refreshUI)
+			self.ui.project_comboBox.addItem(projectName)
 
 
 
@@ -187,69 +148,25 @@ class MyForm(QtGui.QMainWindow):
 			taskStatus = eachVersion['sg_task.Task.sg_status_list']
 			currentVer = None
 
-			# version that linked to shot
 			if entity : 
 				shotName = entity['name']
 
-				# version that has movie
 				if uploadMovie : 
 					uploadMovie = eachVersion['sg_uploaded_movie']['name']
 					currentVer = self.findVersion(uploadMovie)
 
-					# find department 
-					# if version has linked to task 
-					if taskID : 
-						taskName = taskID['name']
+					# if shotName not in the dict, just add
+					if not shotName in shotVersionInfo.keys() : 
+						shotVersionInfo[shotName] = {'versionName': versionName, 'versionId': eachVersion['id'], 'uploadMovie': uploadMovie, 'shotID': shotID, 'taskID': taskID, 'taskStatus': taskStatus}
 
-						''' define department by task and name '''
-						for eachDep in self.task : 
-							step = eachDep 
-							tasks = self.task[step]
-
-
-							# if task name in valid list
-							if taskName in tasks : 
-								tmpDict = {'versionName': versionName, 'versionId': eachVersion['id'], 'uploadMovie': uploadMovie, 'shotID': shotID, 'taskID': taskID, 'taskStatus': taskStatus}
-
-								# if not step in data
-								if not shotName in shotVersionInfo.keys() : 
-									shotVersionInfo[shotName] = {step: tmpDict}
-
-
-								# if step already in data, check if it has a higher version
-								else : 
-									if not step in shotVersionInfo[shotName].keys() : 
-										shotVersionInfo[shotName].update({step: tmpDict})
-
-									else : 
-										previousVersion = shotVersionInfo[shotName][step]['versionName']
-										previousVersionNumber = self.findVersion(previousVersion)
-
-										# yes, add to step
-										if currentVer > previousVersionNumber : 
-											shotVersionInfo[shotName][step] = tmpDict  
-
-					# if no task name 
+					# if already in the dict, see if the new one really a higher version
 					else : 
-						# assume that version is layout
-						step = 'layout'
-						tmpDict = {'versionName': versionName, 'versionId': eachVersion['id'], 'uploadMovie': uploadMovie, 'shotID': shotID, 'taskID': taskID, 'taskStatus': taskStatus}
+						previousVersion = shotVersionInfo[shotName]['versionName']
+						previousVersionNumber = self.findVersion(previousVersion)
 
-						if step in versionName : 
-							if not shotName in shotVersionInfo.keys() : 
-								shotVersionInfo[shotName] = {step: tmpDict}
-
-							else : 
-								if not step in shotVersionInfo[shotName].keys() : 
-									shotVersionInfo[shotName].update({step: tmpDict})
-
-								else : 
-									previousVersion = shotVersionInfo[shotName][step]['versionName']
-									previousVersionNumber = self.findVersion(previousVersion)
-
-									# yes, add to step
-									if currentVer > previousVersionNumber : 
-										shotVersionInfo[shotName][step] = tmpDict  
+						# if higher version, replace previous data
+						if currentVer > previousVersionNumber : 
+							shotVersionInfo[shotName] = {'versionName': versionName, 'versionId': eachVersion['id'], 'uploadMovie': uploadMovie, 'shotID': shotID, 'taskID': taskID, 'taskStatus': taskStatus}
 
 
 		self.shotVersionInfo = shotVersionInfo
@@ -352,6 +269,7 @@ class MyForm(QtGui.QMainWindow):
 							serverShotInfo[shotName].update({dep: eachMov})
 
 
+		self.serverShotInfo = serverShotInfo
 		return serverShotInfo
 		# for each in sorted(serverShotInfo) : 
 		# 	print each, serverShotInfo[each]
@@ -383,28 +301,22 @@ class MyForm(QtGui.QMainWindow):
 							files = fileUtils.listFile(browseFile)
 							maxVersion = None
 
-							# loop each file in each department
 							for eachFile in files : 
-
+								version = self.findVersion(eachFile)
 								dep = eachFile.split('_')[-1].split('.')[0]
-								fullPathFile = '%s/%s' % (browseFile, eachFile)
 
-								# confirm correct naming by match department name and file name
-								if eachDep == dep : 
-									version = self.findVersion(eachFile)
-									
-									if version > max : 
-										maxVersion = fullPathFile
+								if version > max : 
+									maxVersion = eachFile
 
 							if maxVersion : 
 								shotName = ('_').join(maxVersion.split('_')[1:4])
 
 								if not shotName in publishInfo.keys() : 
-									publishInfo[shotName] = {dep: maxVersion}
+									publishInfo[shotName] = {dep: maxVersion, 'path': browseFile}
 
 								else : 
 									if not dep in publishInfo[shotName].keys() : 
-										publishInfo[shotName].update({dep: maxVersion})
+										publishInfo[shotName].update({dep: maxVersion, 'path': browseFile})
 
 
 		self.publishInfo = publishInfo
@@ -412,103 +324,17 @@ class MyForm(QtGui.QMainWindow):
 		# for each in sorted(publishInfo) : 
 		# 	print each, publishInfo[each]
 
-	def getServerFile(self, shotName, dep) : 
-
-		serverFile = str()
-		publishFile = str()
-		convert = False
-		returnData = []
-
-		# if server has file
-		if shotName in self.serverVersionInfo.keys() : 
-			if dep in self.serverVersionInfo[shotName].keys() : 
-				serverFile = self.serverVersionInfo[shotName][dep]
-
-
-		if shotName in self.publishVersionInfo.keys() : 
-			if dep in self.publishVersionInfo[shotName].keys() : 
-				publishFile = self.publishVersionInfo[shotName][dep]
-
-		if serverFile and publishFile : 
-			serverVersion = self.findVersion(serverFile)
-			publishVersion = self.findVersion(publishFile)
-
-			if serverVersion > publishVersion : 
-				convert = False
-				heroFile = serverFile
-				returnData = [heroFile, convert, serverFile, publishFile]
-
-			if serverVersion < publishVersion : 
-				convert = True 
-				heroFile = publishFile
-				returnData = [heroFile, convert, serverFile, publishFile]
-
-			if serverVersion == publishVersion : 
-				convert = False
-				heroFile = serverFile
-				returnData = [heroFile, convert, serverFile, publishFile]
-
-		elif serverFile : 
-			convert = False
-			heroFile = serverFile
-			publishFile = '-'
-			returnData = [heroFile, convert, serverFile, publishFile]
-
-
-		elif publishFile : 
-			convert = True
-			heroFile = publishFile 
-			serverFile = '-'
-			returnData = [heroFile, convert, serverFile, publishFile]
-
-
-		return returnData
-
-
-
-	def getSGUploadFile(self, shotName, dep) : 
-
-		if shotName in self.sgVersionInfo.keys() : 
-			if dep in self.sgVersionInfo[shotName].keys() : 
-				versionInfo = self.sgVersionInfo[shotName][dep]
-				uploadMovie = versionInfo['uploadMovie']
-
-				if uploadMovie : 
-					return uploadMovie
 
 
 
 	# button action =======================================================================================
 
-	def doScanShot(self, mode = 'normal') : 
-		self.setStatusLine('Listing data ...')
-		self.shots = self.getSGShotInfo()
-		self.serverVersionInfo = self.getServerVersionInfo()
-		self.publishVersionInfo = self.getPublishVersionInfo()
-		self.sgVersionInfo = self.getSGVersionInfo()
-		self.listData(mode)
-		self.setFilterComboBox()
+	def doScanShot(self) : 
+		self.listData()
 		self.resizeColumn()
 
 
-	def refreshUI(self) : 
-		self.listData ('normal')
-		self.resizeColumn()
-
-	
-	def refreshData(self) : 
-		self.setStatusLine('Refreshing data ...')
-		self.shots = self.getSGShotInfo()
-		self.serverVersionInfo = self.getServerVersionInfo()
-		self.publishVersionInfo = self.getPublishVersionInfo()
-		self.sgVersionInfo = self.getSGVersionInfo()
-		self.listData('refresh')
-		self.resizeColumn()
-
-
-
-	def listData(self, mode) : 
-
+	def listData(self, mode = 'normal') : 
 		row = 0
 		height = 20
 		widget = 'shotgun_tableWidget'
@@ -516,122 +342,358 @@ class MyForm(QtGui.QMainWindow):
 		color = [255, 255, 255]
 		color2 = [240, 240, 240]
 
+		self.ui.status_label.setText('Listing shot ...')
+		QtGui.QApplication.processEvents()
+
+		shots = self.getSGShotInfo()
+		self.ui.status_label.setText('list version ...')
+		print 'list version ...'
+		shotVersionInfo = self.getSGVersionInfo()
+		QtGui.QApplication.processEvents()
+
+		print 'list file server ...'
+		self.ui.status_label.setText('list file server ...')
+		serverVersionInfo = self.getServerVersionInfo()
+		QtGui.QApplication.processEvents()
+
+		print 'list publish version ...'
+		self.ui.status_label.setText('list publish version ...')
+		publishVersionInfo = self.getPublishVersionInfo()
+		QtGui.QApplication.processEvents()
+
+		print 'list task info ...'
+		self.ui.status_label.setText('list task info ...')
+		taskInfo = self.getSGTaskInfo()
+		QtGui.QApplication.processEvents()
+
+		self.ui.status_label.setText('listing data ...')
+		print 'listing data ...'
+		QtGui.QApplication.processEvents()
+
 		if mode == 'normal' : 
 			self.clearTable(widget)
 
 		# self.writeLog(str(shotVersionInfo))
 
 
-		for eachShot in sorted(self.shots) : 
+		for eachShot in sorted(shots) : 
 			status = '-'
 			shotName = eachShot['code']
 			versionName = '-'
 			uploadMovie = '-'
 			serverMovie = '-'
 			publishMovie = '-'
-			serverMovieName = '-'
 			convert = '-'
-			dep = str()
 			action = '-'
-			updateTask = '-'
 			statusColor = color
 			statusColor2 = color
 			convertColor = color
 			nameColor = color2
-			depFilter = self.getDepartment()
-			statusIcon = self.okIcon
-			heroFile = str()
-			sgMovieVersion = str()
-			serverVersion = str()
-			showShot = False
+			sgTask = '-'
+			dep = str()
+			movieSg = str()
+			step = ''
+			publishPath = str()
+			statusIcon = str()
 
-			# check if this shot is in shotgun
-			sgMovie = self.getSGUploadFile(shotName, depFilter)
-			serverFileInfo = self.getServerFile(shotName, depFilter)
+			# get update task
+			updateTask = self.getUpdateTask(shotName)
 
-			if sgMovie : 
-				uploadMovie = os.path.basename(sgMovie)
-				sgMovieVersion = self.findVersion(uploadMovie)
-				dep = depFilter
+			# get version from shotgun
+			# if this has a version 
+			if shotName in shotVersionInfo.keys() : 
+				versionName = shotVersionInfo[shotName]['versionName']
+				uploadMovie = shotVersionInfo[shotName]['uploadMovie']
+				updateTask = self.getUpdateTask(shotName)
+				
+				# if uploadMovie in version 
+				if uploadMovie : 
+					movieSg = True
+					if updateTask == 'anim_blocking' or updateTask == 'anim_splining' : 
+						dep = 'anim'
 
-				if uploadMovie and not sgMovieVersion : 
-					action = 'Wrong naming'
+					elif updateTask == 'layout' : 
+						dep = 'layout'
 
-			if serverFileInfo : 
-				heroFile = serverFileInfo[0]
-				convert = serverFileInfo[1]
-				serverFile = serverFileInfo[2]
-				publishFile = serverFileInfo[3]
-				serverMovie = os.path.basename(serverFile)
-				publishMovie = os.path.basename(publishFile)
-				dep = depFilter
+					else : 
+						updateTask = '-'
+						movieSg = False
 
-				serverVersion = self.findVersion(os.path.basename(heroFile))
+					if dep : 
+						# get mov file from server
+						if shotName in serverVersionInfo.keys() : 
+							# search version that match the dep
+							if dep in serverVersionInfo[shotName].keys() : 
+								serverMovie = serverVersionInfo[shotName][dep]
 
-				if convert : 
-					convert = 'Yes'
+							# if dep = layout, try to look for anim
+							elif dep == 'layout' : 
+								if 'anim' in serverVersionInfo[shotName].keys() : 
+									serverMovie = serverVersionInfo[shotName]['anim']
+									dep = 'anim'
+									# updateTask = self.getUpdateTaskSG(shotName)
+									updateTask = 'findTaskSG'
+
+
+						# get mov file from publish server
+						if shotName in publishVersionInfo.keys() : 
+							# looking for version that match dep
+							if dep in publishVersionInfo[shotName].keys() : 
+								publishMovie = publishVersionInfo[shotName][dep]
+								path = publishVersionInfo[shotName]['path']
+								publishPath = '%s/%s' % (path, publishMovie)
+
+							# if dep = layout, try looking for anim
+							elif dep == 'layout' : 
+								if 'anim' in serverVersionInfo[shotName].keys() : 
+									serverMovie = serverVersionInfo[shotName]['anim']
+									dep = 'anim'
+									path = publishVersionInfo[shotName]['path']
+									publishPath = '%s/%s' % (path, publishMovie)
+									# updateTask = self.getUpdateTaskSG(shotName)
+									updateTask = 'findTaskSG'
+
+					else : 
+						dep = '-'
+
 
 				else : 
-					convert = '-'
+					movieSg = False
+					updateTask = '-'
+
+			else : 
+				movieSg = False
+				updateTask = '-'
+
+			# if server has no movie or no version 
+			if not movieSg : 
+
+				# looking in the server
+				if shotName in serverVersionInfo.keys() : 
+					serverMovieInfo = serverVersionInfo[shotName]
+
+					# looking for anim (the lastest one)
+					if 'anim' in serverMovieInfo.keys() : 
+						serverMovie = serverMovieInfo['anim']
+						dep = 'anim'
+						# updateTask = self.getUpdateTaskSG(shotName)
+						updateTask = 'findTaskSG'
+
+					elif 'layout' in serverMovieInfo.keys() : 
+						serverMovie = serverMovieInfo['layout']
+						dep = 'layout'
+						updateTask = 'layout'
 
 
-			# compare condition
-			# if shotgun and serverFile available
-			if sgMovieVersion and serverVersion : 
-				if sgMovieVersion < serverVersion : 
-					action = 'Need upload'					
+				# looking in publish server
+				if shotName in publishVersionInfo.keys() : 
+					publishMovieInfo = publishVersionInfo[shotName]
 
-				if sgMovieVersion == serverVersion : 
-					action = 'Good'					
+					# looking for anim 
+					if 'anim' in publishMovieInfo.keys() : 
+						publishMovie = publishMovieInfo['anim']
+						path = publishVersionInfo[shotName]['path']
+						publishPath = '%s/%s' % (path, publishMovie)
+						dep = 'anim'
 
-				if sgMovieVersion > serverVersion : 
-					action = 'Email Coordinator'					
+					elif 'layout' in publishMovieInfo.keys() : 
+						publishMovie = publishMovieInfo['layout']
+						path = publishVersionInfo[shotName]['path']
+						publishPath = '%s/%s' % (path, publishMovie)
+						dep = 'layout'
 
-			# if only shotgun file available
-			elif sgMovieVersion : 
-				action = 'Good'				
+			# compare shotgun and server version
+			serverMovieName = os.path.basename(serverMovie)
 
-			# if only serverFile available
-			elif serverVersion : 
-				action = 'Need upload'		
+			good = None
 
+			# if equal, mean same version 
+			if uploadMovie == serverMovieName : 
+				if not uploadMovie == '-' : 
+					action = 'Good'
+					statusColor = self.green
+					statusColor2 = self.lightGreen
+					nameColor = statusColor
+					good = True
+					statusIcon = 'ok'
 
-			# define color ===============================================================
-			if action == 'Good' : 
-				statusColor2 = self.lightGreen	
-				nameColor = self.green
-				statusIcon = 'ok'
+				else : 
+					action = '-'
+					print 'shotName', shotName
 
-			elif action == 'Need upload' : 
-				statusColor2 = self.lightOrange
-				nameColor = self.orange
-				statusIcon = 'ready'
-
-			elif action == 'Email Coordinator' : 
-				statusColor2 = self.lightYellow
-				nameColor = self.yellow
-				statusIcon = 'needAttention'
-
-			elif action == 'Wrong naming' : 
-				statusColor2 = self.lightYellow
-				nameColor = self.yellow
-				statusIcon = 'needAttention'
-
-			if convert == 'Yes' : 
-				convertColor = self.lightGreen
+			# looking for other versions
+			# see version
+			uploadVersion = self.findVersion(uploadMovie)
+			serverVersion = self.findVersion(serverMovieName)
+			publishVersion = self.findVersion(publishMovie)
 
 
-			# collect action
-			if not action in self.actionList : 
-				self.actionList.append(action)
+			# if both of them return version
+			if uploadVersion : 
+				if serverVersion and not publishVersion : 
 
+					# if server is newer
+					if int(serverVersion) > int(uploadVersion) : 
+						action = 'Need upload'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						nameColor = statusColor
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+
+					# if shotgun is newer 
+					if int(serverVersion) < int(uploadVersion) : 
+						action = 'Email coordinator'
+						statusColor = self.yellow
+						statusColor2 = self.lightYellow
+						nameColor = statusColor
+						statusIcon = 'needAttention'
+
+				# looking for publish version
+				if publishVersion and not serverVersion: 
+					if int(publishVersion) == int(uploadVersion) : 
+						action = 'Good'
+						statusColor = self.green
+						statusColor2 = self.lightGreen
+						nameColor = statusColor
+						statusIcon = 'ok'
+
+					if int(publishVersion) > int(uploadVersion) : 
+						action = 'Need upload*'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						convert = 'Yes'
+						convertColor = self.green
+						nameColor = statusColor
+						updateTask = 'findTaskSG'
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+
+					elif int(publishVersion) < int(uploadVersion) : 
+						action = 'Shotgun newer'
+						statusColor = self.yellow
+						statusColor2 = self.lightYellow
+						nameColor = statusColor
+						statusIcon = 'ok'
+
+				if serverVersion and publishVersion : 
+					if int(serverVersion) > int(publishVersion) : 
+						action = 'Good*2'
+						statusColor = self.green
+						statusColor2 = self.lightGreen
+						nameColor = statusColor
+						statusIcon = 'ok'
+
+					if int(serverVersion) < int(publishVersion) : 
+						action = 'Need upload*'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						convert = 'Yes'
+						convertColor = self.green
+						nameColor = statusColor
+						updateTask = 'findTaskSG'
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+
+				# no publish version
+				else : 
+					action = 'Good*2'
+					statusColor = self.green
+					statusColor2 = self.lightGreen
+					nameColor = statusColor
+					statusIcon = 'ok'
+
+			else : 
+				if serverVersion and not publishVersion : 
+					action = 'Need upload'
+					statusColor = self.orange
+					statusColor2 = self.lightOrange
+					nameColor = statusColor
+
+					if dep == 'anim' : 
+						statusIcon = 'ready'
+
+					if dep == 'layout' : 
+						statusIcon = 'needAttention'
+
+				if publishVersion and not serverVersion : 
+					action = 'Need upload*'
+					statusColor = self.orange
+					statusColor2 = self.lightOrange
+					nameColor = statusColor
+					convert = 'Yes'
+					convertColor = self.green
+					updateTask = 'findTaskSG'
+
+					if dep == 'anim' : 
+						statusIcon = 'ready'
+
+					if dep == 'layout' : 
+						statusIcon = 'needAttention'
+
+				if publishVersion and serverVersion : 
+					if int(serverVersion) > int(publishVersion) : 
+						action = 'Good*2'
+						statusColor = self.green
+						statusColor2 = self.lightGreen
+						nameColor = statusColor
+						statusIcon = 'ok'
+
+
+					if int(serverVersion) < int(publishVersion) : 
+						action = 'Need upload*'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						convert = 'Yes'
+						convertColor = self.green
+						nameColor = statusColor
+						updateTask = 'findTaskSG'
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+
+
+					else : 
+						action = 'Need upload'
+						statusColor = self.orange
+						statusColor2 = self.lightOrange
+						nameColor = statusColor
+
+						if dep == 'anim' : 
+							statusIcon = 'ready'
+
+						if dep == 'layout' : 
+							statusIcon = 'needAttention'
+
+
+				if not uploadMovie == '-' : 
+					action = 'SG wrong naming'
+					statusColor = self.red
+					statusColor2 = self.lightRed
+					nameColor = statusColor
+					statusIcon = 'needAttention'
 
 
 			datas = {	
 						'status': {'text': status, 'icon': statusIcon, 'color': statusColor2},
 						'shotName': {'text': shotName, 'color': nameColor},
 						'uploadMovie': {'text': uploadMovie, 'color': statusColor2},
-						'serverMovie': {'text': serverMovie, 'color': statusColor2},
+						'serverMovie': {'text': serverMovieName, 'color': statusColor2},
 						'publishMovie': {'text': publishMovie, 'color': statusColor2},
 						'convert': {'text': convert, 'color': convertColor},
 						'action': {'text': action, 'color': statusColor2},
@@ -639,47 +701,46 @@ class MyForm(QtGui.QMainWindow):
 						'task': {'text': updateTask, 'color': statusColor2}
 					}
 
-			
-			
-			# filter area =========================================================
+			keywords = []
+			filter1 = 'anim'
+			filter2 = 'layout'
+			filter3 = 'comp'
+			noFilter = '-'
 
-			if self.ui.showAll_checkBox.isChecked() : 
-				showShot = True
+			anim = self.ui.anim_checkBox.isChecked()
+			layout = self.ui.layout_checkBox.isChecked()
+			comp = self.ui.comp_checkBox.isChecked()
 
-			else : 
-				if not action == '-' : 
-					showShot = True
+			if anim : 
+				keywords.append(filter1)
 
-				else : 
-					showShot = False
+			if layout : 
+				keywords.append(filter2)
 
-			currentFilter = str(self.ui.filter_comboBox.currentText())
-			if not currentFilter == 'All actions' : 
-				if currentFilter == action : 
-					showShot = True
+			if comp : 
+				keywords.append(filter3)
 
-				else : 
-					showShot = False
+			if not keywords : 
+				keywords = [dep]
 
-			if showShot : 
+			if dep in keywords : 
 				self.fillData(row, datas, mode)
-				self.allInfo[shotName] = {'serverMovie': serverFile, 'publishMovie': publishFile}
+				self.allInfo[shotName] = {'serverMovie': serverMovie, 'publishMovie': publishPath}
+				# self.allInfo[shotName].update(datas)
 
 				row += 1
 
 
-		self.setStatusLine('')
-
+		self.ui.status_label.setText('')
+		QtGui.QApplication.processEvents()
 
 
 	def doUpdate(self) : 
 		
-		currentFilter = self.ui.filter_comboBox.currentText()
 		widget = 'shotgun_tableWidget'
 		i = 0
 		row = 0
 		allItem = self.ui.all_checkBox.isChecked()
-		shotCmd = dict()
 
 		# selection
 		if not allItem : 
@@ -725,34 +786,41 @@ class MyForm(QtGui.QMainWindow):
 			# 	self.serverShotInfo[shotName]
 
 			step = steps[i]
-			if step == 'layout' : 
-				if not allItem : 
-					self.completeDialog('Warning', 'Skip update layout')
 
-
-
-			if step == 'anim' : 
-				if action == 'Need upload' and convert == 'Yes' : 
-
-					self.setStatus(row, 'convert', True)
-					convertFile = self.convertMov(shotName)
-
-					if convertFile : 
-						self.setStatus(row, 'ip', True)
-						self.updateSG(shotName, step, convertFile)
-						self.refreshData()
-
-				elif action == 'Need upload' : 
+			if action == 'Need upload' : 
+				if step == 'anim' : 
 					try : 
 						self.setStatus(row, 'ip', True)
-						serverFile = self.allInfo[shotName]['serverMovie']
-						self.updateSG(shotName, step, serverFile)
-						self.refreshData()
+						self.updateSG(shotName, serverFile, task, 'serverMovie')
+						self.listData('refresh')
 
 					except Exception as error : 
 						print error
 						self.setStatus(row, 'x', True)
 
+				if step == 'layout' : 
+					if not allItem : 
+						self.completeDialog('Warning', 'Skip update layout')
+
+			if action == 'Need upload*' : 
+				if step == 'anim' : 
+					self.setStatus(row, 'convert', True)
+					convertFile = self.convertMov(shotName)
+
+					if convertFile : 
+						self.setStatus(row, 'ip', True)
+						self.updateSG(shotName, convertFile, task, 'publishMovie')
+						self.listData('refresh')
+
+					else : 
+						print 'No file'
+
+					# if step == 'layout' : 
+					# 	self.completeDialog('Warning', 'Skip update layout')
+
+			# else : 
+			# 	if not allItem : 
+			# 		self.completeDialog('Error', 'No data for this shot')
 
 			row += 1
 			i += 1
@@ -831,23 +899,29 @@ class MyForm(QtGui.QMainWindow):
 		return updateTask
 
 
-	def updateSG(self, shotName, step, movieFile) : 
+	def updateSG(self, shotName, movieFile, task, movieType) : 
 
 		taskID = None
 		shotID = None
-		version = True
 		setTaskStatus = 'rev'
 		versionName = os.path.basename(movieFile).replace('.mov', '')
 		projectName = self.getProjectName()
 
-		task = self.getUpdateTaskSG(shotName)
+		if task == 'findTaskSG' : 
+			task = self.getUpdateTaskSG(shotName)
 
-		movieFile = movieFile.replace('/', '\\')
+		if shotName in self.allInfo.keys() : 
+			if movieType == 'serverMovie' : 
+				movieFile = self.allInfo[shotName]['serverMovie']
 
-		# if shotName has version, get taskID, shotID from version data
-		if shotName in self.shotVersionInfo.keys() : 
-			if step in self.shotVersionInfo[shotName].keys() : 
-				versionInfo = self.shotVersionInfo[shotName][step]
+			if movieType == 'publishMovie' : 
+				movieFile = movieFile
+
+			movieFile = movieFile.replace('/', '\\')
+
+			# if shotName has version, get taskID, shotID from version data
+			if shotName in self.shotVersionInfo.keys() : 
+				versionInfo = self.shotVersionInfo[shotName]
 				shotInfo = versionInfo['shotID']
 				taskStatus = versionInfo['taskStatus']
 
@@ -862,27 +936,20 @@ class MyForm(QtGui.QMainWindow):
 
 				self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
 
+
+			# no version data, get shotID and taskID by calling shotgun
 			else : 
-				version = False
+				if shotName in self.shotInfo.keys() : 
 
-		else : 
-			version = False
+					shotID = self.shotInfo[shotName]['id']
+					result = self.findTaskID(projectName, shotName, task)
 
+					if result : 
+						taskID = result[0]['id']
+						self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
 
-
-		# no version data, get shotID and taskID by calling shotgun
-		if not version : 
-			if shotName in self.shotInfo.keys() : 
-				print self.shotInfo[shotName]
-				shotID = self.shotInfo[shotName]['id']
-				result = self.findTaskID(projectName, shotName, task)
-
-				if result : 
-					taskID = result[0]['id']
-					self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
-
-				else : 
-					self.completeDialog('Error', 'Cannot find task ID')
+					else : 
+						self.completeDialog('Error', 'Cannot find task ID')
 
 
 	def updateSGCmd(self, projectName, versionName, shotID, taskID, movieFile, status) : 
@@ -903,15 +970,17 @@ class MyForm(QtGui.QMainWindow):
 
 			 }	
 
-		self.setStatusLine('Creating version ...')
+		self.ui.status_label.setText('Creating version ...')
 		result = sgUtils.sg.create('Version', data)
 		print 'Create version %s success' % versionName
+		QtGui.QApplication.processEvents()
 
-		self.setStatusLine('Uploading movie ...')
+		self.ui.status_label.setText('Uploading movie ...')
 		print 'Uploading movie ...'
 		result2 = sgUtils.sg.upload('Version', result['id'], movieFile.replace('/', '\\'), 'sg_uploaded_movie')
 		print 'Upload movie %s success' % movieFile
 		print '=================================='
+		QtGui.QApplication.processEvents()
 
 		return result2
 
@@ -986,7 +1055,6 @@ class MyForm(QtGui.QMainWindow):
 
 	# widget part =========================================================================================
 
-
 	def resizeColumn(self) : 
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.statusColumn)
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.shotColumn)
@@ -1047,22 +1115,6 @@ class MyForm(QtGui.QMainWindow):
 
 	# general function =======================================================================
 
-	def getDepartment(self) : 
-
-		dep = str()
-		if self.ui.anim_radioButton.isChecked() : 
-			dep = 'anim'
-
-		if self.ui.layout_radioButton.isChecked() : 
-			dep = 'layout'
-
-		if self.ui.composite_radioButton.isChecked() : 
-			dep = 'comp'
-
-		return dep
-
-
-
 	def findVersion(self, inputFile) : 
 		eles = inputFile.split('.')
 		version = None
@@ -1079,13 +1131,6 @@ class MyForm(QtGui.QMainWindow):
 		projectName = 'ttv_e100'
 
 		return projectName
-
-
-
-	def setStatusLine(self, text) : 
-		self.ui.status_label.setText(text)
-		QtGui.QApplication.processEvents()
-
 
 	# table part ==========================================================================================
 
