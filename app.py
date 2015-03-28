@@ -496,18 +496,18 @@ class MyForm(QtGui.QMainWindow):
 		self.resizeColumn()
 
 	
-	def refreshData(self) : 
+	def refreshData(self, filters = None) : 
 		self.setStatusLine('Refreshing data ...')
 		self.shots = self.getSGShotInfo()
 		self.serverVersionInfo = self.getServerVersionInfo()
 		self.publishVersionInfo = self.getPublishVersionInfo()
 		self.sgVersionInfo = self.getSGVersionInfo()
-		self.listData('refresh')
+		self.listData('refresh', filters)
 		self.resizeColumn()
 
 
 
-	def listData(self, mode) : 
+	def listData(self, mode, filters = None) : 
 
 		row = 0
 		height = 20
@@ -661,6 +661,14 @@ class MyForm(QtGui.QMainWindow):
 				else : 
 					showShot = False
 
+			if filters : 
+				if shotName in filters : 
+					showShot = True
+
+				else : 
+					showShot = False
+
+
 			if showShot : 
 				self.fillData(row, datas, mode)
 				self.allInfo[shotName] = {'serverMovie': serverFile, 'publishMovie': publishFile}
@@ -679,7 +687,7 @@ class MyForm(QtGui.QMainWindow):
 		i = 0
 		row = 0
 		allItem = self.ui.all_checkBox.isChecked()
-		shotCmd = dict()
+		shotFilters = self.getAllData(self.shotColumn, widget)
 
 		# selection
 		if not allItem : 
@@ -740,14 +748,14 @@ class MyForm(QtGui.QMainWindow):
 					if convertFile : 
 						self.setStatus(row, 'ip', True)
 						self.updateSG(shotName, step, convertFile)
-						self.refreshData()
+						self.refreshData(shotFilters)
 
 				elif action == 'Need upload' : 
 					try : 
 						self.setStatus(row, 'ip', True)
 						serverFile = self.allInfo[shotName]['serverMovie']
 						self.updateSG(shotName, step, serverFile)
-						self.refreshData()
+						self.refreshData(shotFilters)
 
 					except Exception as error : 
 						print error
@@ -756,6 +764,9 @@ class MyForm(QtGui.QMainWindow):
 
 			row += 1
 			i += 1
+
+
+		self.completeDialog('Complete', 'Update success')
 
 
 	# sub function from button ===========================================================================================
