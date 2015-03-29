@@ -110,6 +110,7 @@ class MyForm(QtGui.QMainWindow):
 		self.ui.anim_radioButton.toggled.connect(self.refreshUI)
 		self.ui.composite_radioButton.toggled.connect(self.refreshUI)
 		self.ui.filter_comboBox.currentIndexChanged.connect(self.refreshUI)
+		self.ui.all_checkBox.stateChanged.connect(self.setButtonUI)
 
 
 
@@ -495,6 +496,16 @@ class MyForm(QtGui.QMainWindow):
 		self.listData ('normal')
 		self.resizeColumn()
 
+
+	def setButtonUI(self) : 
+		state = self.ui.all_checkBox.isChecked()
+
+		if state : 
+			self.ui.update_pushButton.setText('Update All Shot')
+
+		else : 
+			self.ui.update_pushButton.setText('Update Selected Shot')
+
 	
 	def refreshData(self, filters = None) : 
 		self.setStatusLine('Refreshing data ...')
@@ -733,33 +744,28 @@ class MyForm(QtGui.QMainWindow):
 			# 	self.serverShotInfo[shotName]
 
 			step = steps[i]
-			if step == 'layout' : 
-				if not allItem : 
-					self.completeDialog('Warning', 'Skip update layout')
 
+			# if step == 'anim' : 
+			if action == 'Need upload' and convert == 'Yes' : 
 
+				self.setStatus(row, 'convert', True)
+				convertFile = self.convertMov(shotName)
 
-			if step == 'anim' : 
-				if action == 'Need upload' and convert == 'Yes' : 
+				if convertFile : 
+					self.setStatus(row, 'ip', True)
+					self.updateSG(shotName, step, convertFile)
+					self.refreshData(shotFilters)
 
-					self.setStatus(row, 'convert', True)
-					convertFile = self.convertMov(shotName)
+			elif action == 'Need upload' : 
+				try : 
+					self.setStatus(row, 'ip', True)
+					serverFile = self.allInfo[shotName]['serverMovie']
+					self.updateSG(shotName, step, serverFile)
+					self.refreshData(shotFilters)
 
-					if convertFile : 
-						self.setStatus(row, 'ip', True)
-						self.updateSG(shotName, step, convertFile)
-						self.refreshData(shotFilters)
-
-				elif action == 'Need upload' : 
-					try : 
-						self.setStatus(row, 'ip', True)
-						serverFile = self.allInfo[shotName]['serverMovie']
-						self.updateSG(shotName, step, serverFile)
-						self.refreshData(shotFilters)
-
-					except Exception as error : 
-						print error
-						self.setStatus(row, 'x', True)
+				except Exception as error : 
+					print error
+					self.setStatus(row, 'x', True)
 
 
 			row += 1
@@ -851,7 +857,14 @@ class MyForm(QtGui.QMainWindow):
 		versionName = os.path.basename(movieFile).replace('.mov', '')
 		projectName = self.getProjectName()
 
-		task = self.getUpdateTaskSG(shotName)
+		if step == 'anim' : 
+			task = self.getUpdateTaskSG(shotName)
+
+		if step == 'layout' : 
+			task = None
+
+		if step == 'comp' : 
+			task = 'compositing'
 
 		movieFile = movieFile.replace('/', '\\')
 
@@ -862,16 +875,28 @@ class MyForm(QtGui.QMainWindow):
 				shotInfo = versionInfo['shotID']
 				taskStatus = versionInfo['taskStatus']
 
-				result = self.findTaskID(projectName, shotName, task)
+				if step == 'anim' or step == 'comp' : 
 
-				if result : 
-					taskID = result[0]['id']
+					result = self.findTaskID(projectName, shotName, task)
 
-				if shotInfo : 
-					shotID = shotInfo['id']
+					if result : 
+						taskID = result[0]['id']
+
+					if shotInfo : 
+						shotID = shotInfo['id']
 
 
-				self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
+					self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
+
+				if step == 'layout' : 
+
+					if shotInfo : 
+						shotID = shotInfo['id']
+
+					taskID = None
+					self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
+
+
 
 			else : 
 				version = False
@@ -884,16 +909,18 @@ class MyForm(QtGui.QMainWindow):
 		# no version data, get shotID and taskID by calling shotgun
 		if not version : 
 			if shotName in self.shotInfo.keys() : 
-				print self.shotInfo[shotName]
 				shotID = self.shotInfo[shotName]['id']
+
 				result = self.findTaskID(projectName, shotName, task)
 
 				if result : 
 					taskID = result[0]['id']
-					self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
 
 				else : 
-					self.completeDialog('Error', 'Cannot find task ID')
+					taskID = None
+				
+				self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
+
 
 
 	def updateSGCmd(self, projectName, versionName, shotID, taskID, movieFile, status) : 
@@ -908,11 +935,12 @@ class MyForm(QtGui.QMainWindow):
 		data = { 'project': proj,
 				 'code': versionName,
 				 'entity': {'type':'Shot', 'id':shotID},
-				 'sg_task': {'type':'Task', 'id':taskID},
 				 'sg_status_list': status, 
-				 # 'sg_path': {'local_path': publishFile, 'name': version}
 
 			 }	
+
+		if taskID : 
+			data.update({'sg_task': {'type':'Task', 'id':taskID}})
 
 		self.setStatusLine('Creating version ...')
 		result = sgUtils.sg.create('Version', data)

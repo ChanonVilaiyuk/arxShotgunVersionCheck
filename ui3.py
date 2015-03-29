@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'U:/extensions/studioTools/python/arxShotgunVersionCheck/ui3.ui'
 #
-# Created: Sat Mar 28 11:16:40 2015
+# Created: Sun Mar 29 09:55:47 2015
 #      by: pyside-uic 0.2.14 running on PySide 1.2.0
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,6 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_ShotgunVersionWindow(object):
     def setupUi(self, ShotgunVersionWindow):
         ShotgunVersionWindow.setObjectName("ShotgunVersionWindow")
+        ShotgunVersionWindow.resize(500, 700)
         ShotgunVersionWindow.setMinimumSize(QtCore.QSize(500, 700))
         self.centralwidget = QtGui.QWidget(ShotgunVersionWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -150,7 +151,7 @@ class Ui_ShotgunVersionWindow(object):
         self.verticalLayout_4.addWidget(self.frame_2)
         ShotgunVersionWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(ShotgunVersionWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 568, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 500, 21))
         self.menubar.setObjectName("menubar")
         ShotgunVersionWindow.setMenuBar(self.menubar)
 
@@ -178,5 +179,5 @@ class Ui_ShotgunVersionWindow(object):
         self.shotgun_tableWidget.horizontalHeaderItem(8).setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Convert", None, QtGui.QApplication.UnicodeUTF8))
         self.showAll_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Show All Shots", None, QtGui.QApplication.UnicodeUTF8))
         self.all_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Update all shots", None, QtGui.QApplication.UnicodeUTF8))
-        self.update_pushButton.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Update", None, QtGui.QApplication.UnicodeUTF8))
+        self.update_pushButton.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Update Selected Shot", None, QtGui.QApplication.UnicodeUTF8))
 
