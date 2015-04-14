@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'U:/extensions/studioTools/python/arxShotgunVersionCheck/ui3.ui'
 #
-# Created: Sun Mar 29 09:55:47 2015
+# Created: Tue Apr 14 10:12:58 2015
 #      by: pyside-uic 0.2.14 running on PySide 1.2.0
 #
 # WARNING! All changes made in this file will be lost!
@@ -14,6 +14,7 @@ class Ui_ShotgunVersionWindow(object):
         ShotgunVersionWindow.setObjectName("ShotgunVersionWindow")
         ShotgunVersionWindow.resize(500, 700)
         ShotgunVersionWindow.setMinimumSize(QtCore.QSize(500, 700))
+        ShotgunVersionWindow.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.centralwidget = QtGui.QWidget(ShotgunVersionWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.centralwidget)
@@ -113,6 +114,7 @@ class Ui_ShotgunVersionWindow(object):
         self.horizontalLayout_2.setStretch(1, 2)
         self.verticalLayout_2.addLayout(self.horizontalLayout_2)
         self.shotgun_tableWidget = QtGui.QTableWidget(self.frame)
+        self.shotgun_tableWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.shotgun_tableWidget.setObjectName("shotgun_tableWidget")
         self.shotgun_tableWidget.setColumnCount(9)
         self.shotgun_tableWidget.setRowCount(0)
@@ -153,7 +155,15 @@ class Ui_ShotgunVersionWindow(object):
         self.menubar = QtGui.QMenuBar(ShotgunVersionWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 500, 21))
         self.menubar.setObjectName("menubar")
+        self.menuOptions = QtGui.QMenu(self.menubar)
+        self.menuOptions.setObjectName("menuOptions")
         ShotgunVersionWindow.setMenuBar(self.menubar)
+        self.fastRefresh_action = QtGui.QAction(ShotgunVersionWindow)
+        self.fastRefresh_action.setCheckable(True)
+        self.fastRefresh_action.setChecked(True)
+        self.fastRefresh_action.setObjectName("fastRefresh_action")
+        self.menuOptions.addAction(self.fastRefresh_action)
+        self.menubar.addAction(self.menuOptions.menuAction())
 
         self.retranslateUi(ShotgunVersionWindow)
         QtCore.QMetaObject.connectSlotsByName(ShotgunVersionWindow)
@@ -180,4 +190,6 @@ class Ui_ShotgunVersionWindow(object):
         self.showAll_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Show All Shots", None, QtGui.QApplication.UnicodeUTF8))
         self.all_checkBox.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Update all shots", None, QtGui.QApplication.UnicodeUTF8))
         self.update_pushButton.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Update Selected Shot", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuOptions.setTitle(QtGui.QApplication.translate("ShotgunVersionWindow", "Options", None, QtGui.QApplication.UnicodeUTF8))
+        self.fastRefresh_action.setText(QtGui.QApplication.translate("ShotgunVersionWindow", "Fast Refresh", None, QtGui.QApplication.UnicodeUTF8))
 

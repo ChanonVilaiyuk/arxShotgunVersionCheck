@@ -1,4 +1,5 @@
 import sys, os, re, shutil, random
+from datetime import datetime
 
 #Import python modules
 sys.path.append('U:/extensions/studioTools')
@@ -24,6 +25,8 @@ reload(sgUtils)
 from tools.utils import fileUtils
 reload(fileUtils)
 
+import yaml
+
 moduleDir = sys.modules[__name__].__file__
 
 
@@ -36,8 +39,13 @@ class MyForm(QtGui.QMainWindow):
 		self.ui = ui.Ui_ShotgunVersionWindow()
 		self.ui.setupUi(self)
 
+		# read yaml
+		self.configPath = 'U:/extensions/studioTools/python/arxShotgunVersionCheck/config.yml'
+		self.configData = self.yamlLoad()
+
 		# project setting
 		self.frameRate = 24
+		self.fastRefresh = True
 
 		# logo
 		self.iconDir = os.path.dirname(moduleDir).replace('\\', '/')
@@ -59,6 +67,17 @@ class MyForm(QtGui.QMainWindow):
 		self.stepColumn = 6 
 		self.taskColumn = 7
 		self.convertColumn = 8
+
+		self.columnList = {'statusColumn': [self.statusColumn, True], 
+							'actionColumn': [self.actionColumn, True], 
+							'shotColumn': [self.shotColumn, True], 
+							'shotgunColumn': [self.shotgunColumn, True], 
+							'serverColumn': [self.serverColumn, True], 
+							'publishColumn': [self.publishColumn, False], 
+							'stepColumn': [self.stepColumn, True], 
+							'taskColumn': [self.taskColumn, False], 
+							'convertColumn': [self.convertColumn, True]
+							}
 
 		# media path
 		self.mediaPath = 'V:/projects'
@@ -99,6 +118,8 @@ class MyForm(QtGui.QMainWindow):
 		self.listProjects()
 		self.listFilter()
 		self.resizeColumn()
+		self.setInitialColumnVisibility()
+		self.setTableContextMenu()
 
 
 
@@ -114,7 +135,37 @@ class MyForm(QtGui.QMainWindow):
 
 
 
+	def yamlLoad(self) : 
+		# check config exists 
+		if not os.path.exists(self.configPath) : 
+			self.createDefaultConfig()
+			self.yamlLoad()
+
+		# read config
+		config = file(self.configPath, 'r')
+		configData = yaml.load(config)
+
+		return configData
+
+
+	def createDefaultConfig(self) : 
+		config = file(self.configPath, 'w')
+		data = {'mediaPath': 'V:/projects',
+				'logo': 'logo.png',
+				'okIcon': 'ok_icon.png',
+				'readyIcon': 'ready_icon.png',
+				'xIcon': 'x_icon.png',
+				'ipIcon': 'ip_icon.png',
+				'needAttention': 'attention_icon.png',
+				'convertIcon': 'convert_icon.png'
+				}
+
+		yaml.dump(data, config, default_flow_style = False)
+
+
 	def listProjects(self) : 
+
+		print 'Listing project ...'
 		# sg command
 		projects = sgUtils.sg.find('Project', filters=[], fields=['name'])
 
@@ -177,6 +228,8 @@ class MyForm(QtGui.QMainWindow):
 		versions = self.getSGVersion()
 		shotVersionInfo = dict()
 		maxVer = 0
+
+		print 'Scanning version on shotgun ...'
 
 		for eachVersion in sorted(versions) : 
 			versionName = eachVersion['code']
@@ -269,47 +322,6 @@ class MyForm(QtGui.QMainWindow):
 
 		return versions
 
-	def getSGTaskInfo(self) : 
-
-		pass
-		# project 
-		# project = self.getProjectName()
-		# filters = [['project.Project.name', 'is', project]]
-		# fields = ['content', 'id', 'entity', 'sg_status_list']
-		# tasks = sgUtils.sg.find('Task', filters, fields)
-
-		# taskInfo = dict()
-
-		# for eachTask in tasks : 
-		# 	shotName = eachTask['entity']
-
-		# 	if eachTask['entity'] : 
-		# 		shotName = eachTask['entity']['name']
-		# 		taskName = eachTask['content']
-		# 		status = eachTask['sg_status_list']
-				
-				
-		# 		# if task is blocking
-		# 		if taskName == 'anim_blocking' : 
-		# 			# if status is approved
-		# 			if status == 'aeo7' : 
-		# 				updateTask = 'anim_splining'
-		# 				break
-
-		# 			else : 
-		# 				updateTask = 'anim_blocking'
-		# 				break
-
-		# 		if taskName == 'anim_splining' : 
-		# 			updateTask = taskName
-		# 			break
-
-		# 		taskInfo[shotName] = updateTask
-
-
-		# return taskInfo
-
-
 
 	def getServerVersionInfo(self) : 
 		# project 
@@ -317,6 +329,7 @@ class MyForm(QtGui.QMainWindow):
 		episode = project.split('_')[-1]
 		serverPath = '%s/ttv/%s/shotgun' % (self.mediaPath, episode) 
 		serverShotInfo = dict()
+		print 'Scaning %s for shotgun version ...' % serverPath
 
 
 		if os.path.exists(serverPath) : 
@@ -366,6 +379,7 @@ class MyForm(QtGui.QMainWindow):
 		serverPath = '%s/ttv/%s' % (self.mediaPath, episode) 
 		publishInfo = dict()
 		
+		print 'Scanning %s for publish version ...' % serverPath
 		seqs = fileUtils.listFolder(serverPath)
 
 		for eachSeq in seqs : 
@@ -410,8 +424,7 @@ class MyForm(QtGui.QMainWindow):
 
 		self.publishInfo = publishInfo
 		return publishInfo
-		# for each in sorted(publishInfo) : 
-		# 	print each, publishInfo[each]
+
 
 	def getServerFile(self, shotName, dep) : 
 
@@ -483,6 +496,8 @@ class MyForm(QtGui.QMainWindow):
 
 	def doScanShot(self, mode = 'normal') : 
 		self.setStatusLine('Listing data ...')
+		startTime = datetime.now()
+
 		self.shots = self.getSGShotInfo()
 		self.serverVersionInfo = self.getServerVersionInfo()
 		self.publishVersionInfo = self.getPublishVersionInfo()
@@ -490,6 +505,9 @@ class MyForm(QtGui.QMainWindow):
 		self.listData(mode)
 		self.setFilterComboBox()
 		self.resizeColumn()
+
+		duration = datetime.now() - startTime
+		print '------------------------\n%s' % duration
 
 
 	def refreshUI(self) : 
@@ -507,11 +525,14 @@ class MyForm(QtGui.QMainWindow):
 			self.ui.update_pushButton.setText('Update Selected Shot')
 
 	
-	def refreshData(self, filters = None) : 
+	def refreshData(self, filters = None, fastRefresh = False) : 
 		self.setStatusLine('Refreshing data ...')
-		self.shots = self.getSGShotInfo()
+
+		if not fastRefresh : 
+			self.shots = self.getSGShotInfo()
+			self.publishVersionInfo = self.getPublishVersionInfo()
+
 		self.serverVersionInfo = self.getServerVersionInfo()
-		self.publishVersionInfo = self.getPublishVersionInfo()
 		self.sgVersionInfo = self.getSGVersionInfo()
 		self.listData('refresh', filters)
 		self.resizeColumn()
@@ -519,6 +540,7 @@ class MyForm(QtGui.QMainWindow):
 
 
 	def listData(self, mode, filters = None) : 
+		print 'Listing data ...'
 
 		row = 0
 		height = 20
@@ -555,6 +577,8 @@ class MyForm(QtGui.QMainWindow):
 			sgMovieVersion = str()
 			serverVersion = str()
 			showShot = False
+			serverFile = '-'
+			publishFile = str()
 
 			# check if this shot is in shotgun
 			sgMovie = self.getSGUploadFile(shotName, depFilter)
@@ -699,6 +723,17 @@ class MyForm(QtGui.QMainWindow):
 		row = 0
 		allItem = self.ui.all_checkBox.isChecked()
 		shotFilters = self.getAllData(self.shotColumn, widget)
+		fastRefresh = self.ui.fastRefresh_action.isChecked()
+
+		actions = []
+		shots = []
+		serverFiles = []
+		publishFiles = []
+		steps = []
+		tasks = []
+		converts = []
+
+		startTime = datetime.now()
 
 		# selection
 		if not allItem : 
@@ -740,28 +775,30 @@ class MyForm(QtGui.QMainWindow):
 			task = tasks[i]
 			convert = converts[i]
 
-			# if shotName in self.serverShotInfo.keys() : 
-			# 	self.serverShotInfo[shotName]
 
 			step = steps[i]
 
-			# if step == 'anim' : 
 			if action == 'Need upload' and convert == 'Yes' : 
 
 				self.setStatus(row, 'convert', True)
 				convertFile = self.convertMov(shotName)
 
 				if convertFile : 
-					self.setStatus(row, 'ip', True)
-					self.updateSG(shotName, step, convertFile)
-					self.refreshData(shotFilters)
+					try : 
+						self.setStatus(row, 'ip', True)
+						self.updateSG(shotName, step, convertFile)
+						self.refreshData(shotFilters, fastRefresh)
+
+					except Exception as error : 
+						print error
+						self.setStatus(row, 'x', True)
 
 			elif action == 'Need upload' : 
 				try : 
 					self.setStatus(row, 'ip', True)
 					serverFile = self.allInfo[shotName]['serverMovie']
 					self.updateSG(shotName, step, serverFile)
-					self.refreshData(shotFilters)
+					self.refreshData(shotFilters, fastRefresh)
 
 				except Exception as error : 
 					print error
@@ -772,6 +809,8 @@ class MyForm(QtGui.QMainWindow):
 			i += 1
 
 
+		duration = datetime.now() - startTime
+		print '-----------------------\nDone in %s' % duration
 		self.completeDialog('Complete', 'Update success')
 
 
@@ -924,11 +963,11 @@ class MyForm(QtGui.QMainWindow):
 
 
 	def updateSGCmd(self, projectName, versionName, shotID, taskID, movieFile, status) : 
-		print 'versionName', versionName
-		print 'shotID', shotID
-		print 'taskID', taskID
-		print 'movieFile', movieFile
-		print 'status', status
+		# print 'versionName', versionName
+		# print 'shotID', shotID
+		# print 'taskID', taskID
+		# print 'movieFile', movieFile
+		# print 'status', status
 
 		proj = sgUtils.sg.find_one('Project', [['name', 'is', projectName]])
 
@@ -956,28 +995,12 @@ class MyForm(QtGui.QMainWindow):
 
 
 	def findTaskID(self, projName, shotName, taskName) : 
-		print 'find, %s, %s, %s' % (projName, shotName, taskName)
+
 		filters = [['project.Project.name', 'is', projName], ['entity.Shot.code', 'is', shotName], ['content', 'is', taskName]]    
 		fields = ['code', 'id']
 		result = sgUtils.sg.find('Task', filters, fields)
 
 		return result
-
-
-		# find taskID
-		# fi
-
-		# taskID = sgGetShotTaskID(projName, episode, sequenceName, shotName, taskName)
-		# data = { 'project': proj,
-		#  'code': pubVersion,
-		#  'entity': {'type': 'Shot', 'id':shotID},
-		#  'sg_task': {'type':'Task', 'id':taskID},
-		#  'sg_status_list': status, 
-		#  'description' : description }
-
-
-		# result = sg.create('Version', data)
-		# sg.upload('Version', versionId, movieFile, 'sg_uploaded_movie')
 
 
 	def fillData(self, row, datas, mode = 'normal') : 
@@ -1026,6 +1049,14 @@ class MyForm(QtGui.QMainWindow):
 	# widget part =========================================================================================
 
 
+	def setTableContextMenu(self) : 
+
+		header = self.ui.shotgun_tableWidget.horizontalHeader()
+		header.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+		header.customContextMenuRequested.connect(self.showHeaderMenu)
+
+
+
 	def resizeColumn(self) : 
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.statusColumn)
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.shotColumn)
@@ -1036,10 +1067,38 @@ class MyForm(QtGui.QMainWindow):
 		# self.ui.shotgun_tableWidget.resizeColumnToContents(self.publishColumn)
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.convertColumn)
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.actionColumn)
-		# self.ui.shotgun_tableWidget.setColumnHidden(self.publishColumn, True)
-		# self.ui.shotgun_tableWidget.setColumnHidden(self.stepColumn, True)
-		# self.ui.shotgun_tableWidget.setColumnHidden(self.taskColumn, True)
-		# self.ui.shotgun_tableWidget.setColumnHidden(self.convertColumn, True)
+
+
+	def setInitialColumnVisibility(self) : 
+		for eachColumn in self.columnList : 
+			self.setHeaderVisibility(eachColumn)
+
+
+	def showHeaderMenu(self, pos) : 
+
+		menu=QtGui.QMenu(self)
+
+		for eachItem in self.columnList.keys() : 
+			actionName = eachItem
+			state = self.columnList[eachItem][1]
+			action = QtGui.QAction(actionName, menu, checkable = True)
+			action.setChecked(state)
+			menu.addAction(action)
+			
+		menu.popup(self.ui.shotgun_tableWidget.mapToGlobal(pos))
+		result = menu.exec_(self.ui.shotgun_tableWidget.mapToGlobal(pos))
+
+		if result : 
+			actionName = result.text()
+			checkState = result.isChecked()
+			self.columnList[actionName][1] = checkState
+			self.setHeaderVisibility(actionName)
+
+
+	def setHeaderVisibility(self, actionName) : 
+		column = self.columnList[actionName][0]
+		state = not self.columnList[actionName][1]
+		self.ui.shotgun_tableWidget.setColumnHidden(column, state)
 
 
 
@@ -1115,7 +1174,7 @@ class MyForm(QtGui.QMainWindow):
 
 	def getProjectName(self) : 
 		projectName = str(self.ui.project_comboBox.currentText())
-		projectName = 'ttv_e100'
+		# projectName = 'ttv_e100'
 
 		return projectName
 

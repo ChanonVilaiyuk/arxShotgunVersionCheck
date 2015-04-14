@@ -2,11 +2,22 @@
 <ui version="4.0">
  <class>ShotgunVersionWindow</class>
  <widget class="QMainWindow" name="ShotgunVersionWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>500</width>
+    <height>700</height>
+   </rect>
+  </property>
   <property name="minimumSize">
    <size>
     <width>500</width>
     <height>700</height>
    </size>
+  </property>
+  <property name="contextMenuPolicy">
+   <enum>Qt::CustomContextMenu</enum>
   </property>
   <property name="windowTitle">
    <string>Shotgun Version Checking</string>
@@ -179,6 +190,9 @@
             </item>
             <item>
              <widget class="QTableWidget" name="shotgun_tableWidget">
+              <property name="contextMenuPolicy">
+               <enum>Qt::CustomContextMenu</enum>
+              </property>
               <column>
                <property name="text">
                 <string>Status</string>
@@ -257,7 +271,7 @@
           </size>
          </property>
          <property name="text">
-          <string>Update</string>
+          <string>Update Selected Shot</string>
          </property>
         </widget>
        </item>
@@ -271,11 +285,29 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>568</width>
+     <width>500</width>
      <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuOptions">
+    <property name="title">
+     <string>Options</string>
+    </property>
+    <addaction name="fastRefresh_action"/>
+   </widget>
+   <addaction name="menuOptions"/>
   </widget>
+  <action name="fastRefresh_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Fast Refresh</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
