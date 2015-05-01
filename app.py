@@ -1,4 +1,4 @@
-import sys, os, re, shutil, random
+import sys, os, re, shutil, random, subprocess
 from datetime import datetime
 
 #Import python modules
@@ -105,7 +105,7 @@ class MyForm(QtGui.QMainWindow):
 		self.publishVersionInfo = dict()
 		self.sgVersionInfo = dict()
 
-		self.task = {'anim': ['anim_splining', 'anim_blocking'], 'comp': ['compositing'], 'layout': []}
+		self.task = {'anim': ['anim_splining', 'anim_blocking'], 'comp': ['compositing'], 'layout': ['cam_pose']}
 
 
 		self.initFunctions()
@@ -132,6 +132,7 @@ class MyForm(QtGui.QMainWindow):
 		self.ui.composite_radioButton.toggled.connect(self.refreshUI)
 		self.ui.filter_comboBox.currentIndexChanged.connect(self.refreshUI)
 		self.ui.all_checkBox.stateChanged.connect(self.setButtonUI)
+		self.ui.shotgun_tableWidget.customContextMenuRequested.connect(self.showMenu)
 
 
 
@@ -285,25 +286,31 @@ class MyForm(QtGui.QMainWindow):
 
 					# if no task name 
 					else : 
-						# assume that version is layout
-						step = 'layout'
-						tmpDict = {'versionName': versionName, 'versionId': eachVersion['id'], 'uploadMovie': uploadMovie, 'shotID': shotID, 'taskID': taskID, 'taskStatus': taskStatus}
+						pass
+						''' Edit 5/1/15 - disable version not link to any task. previously use for layout. 
+						But now layout has "cam_pose" task. 
+						Code below is disable.
+						'''
 
-						if step in versionName : 
-							if not shotName in shotVersionInfo.keys() : 
-								shotVersionInfo[shotName] = {step: tmpDict}
+						# # assume that version is layout
+						# step = 'layout'
+						# tmpDict = {'versionName': versionName, 'versionId': eachVersion['id'], 'uploadMovie': uploadMovie, 'shotID': shotID, 'taskID': taskID, 'taskStatus': taskStatus}
 
-							else : 
-								if not step in shotVersionInfo[shotName].keys() : 
-									shotVersionInfo[shotName].update({step: tmpDict})
+						# if step in versionName : 
+						# 	if not shotName in shotVersionInfo.keys() : 
+						# 		shotVersionInfo[shotName] = {step: tmpDict}
 
-								else : 
-									previousVersion = shotVersionInfo[shotName][step]['versionName']
-									previousVersionNumber = self.findVersion(previousVersion)
+						# 	else : 
+						# 		if not step in shotVersionInfo[shotName].keys() : 
+						# 			shotVersionInfo[shotName].update({step: tmpDict})
 
-									# yes, add to step
-									if currentVer > previousVersionNumber : 
-										shotVersionInfo[shotName][step] = tmpDict  
+						# 		else : 
+						# 			previousVersion = shotVersionInfo[shotName][step]['versionName']
+						# 			previousVersionNumber = self.findVersion(previousVersion)
+
+						# 			# yes, add to step
+						# 			if currentVer > previousVersionNumber : 
+						# 				shotVersionInfo[shotName][step] = tmpDict  
 
 
 		self.shotVersionInfo = shotVersionInfo
@@ -900,10 +907,12 @@ class MyForm(QtGui.QMainWindow):
 			task = self.getUpdateTaskSG(shotName)
 
 		if step == 'layout' : 
-			task = None
+			# task -> cam_pose
+			task = self.task['layout'][0] 
 
 		if step == 'comp' : 
-			task = 'compositing'
+			# task -> compositing
+			task = self.task['com'][0] 
 
 		movieFile = movieFile.replace('/', '\\')
 
@@ -914,7 +923,7 @@ class MyForm(QtGui.QMainWindow):
 				shotInfo = versionInfo['shotID']
 				taskStatus = versionInfo['taskStatus']
 
-				if step == 'anim' or step == 'comp' : 
+				if step == 'anim' or step == 'comp' or step == 'layout' : 
 
 					result = self.findTaskID(projectName, shotName, task)
 
@@ -927,13 +936,15 @@ class MyForm(QtGui.QMainWindow):
 
 					self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
 
-				if step == 'layout' : 
+				''' this is disable because layout use task "cam_pose" 
+				'''
+				# if step == 'layout' : 
 
-					if shotInfo : 
-						shotID = shotInfo['id']
+				# 	if shotInfo : 
+				# 		shotID = shotInfo['id']
 
-					taskID = None
-					self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
+				# 	taskID = None
+				# 	self.updateSGCmd(projectName, versionName, shotID, taskID, movieFile, setTaskStatus)
 
 
 
@@ -1069,9 +1080,17 @@ class MyForm(QtGui.QMainWindow):
 		self.ui.shotgun_tableWidget.resizeColumnToContents(self.actionColumn)
 
 
+	# header ====================================================================================
+
 	def setInitialColumnVisibility(self) : 
 		for eachColumn in self.columnList : 
 			self.setHeaderVisibility(eachColumn)
+
+
+	def setHeaderVisibility(self, actionName) : 
+		column = self.columnList[actionName][0]
+		state = not self.columnList[actionName][1]
+		self.ui.shotgun_tableWidget.setColumnHidden(column, state)
 
 
 	def showHeaderMenu(self, pos) : 
@@ -1095,11 +1114,52 @@ class MyForm(QtGui.QMainWindow):
 			self.setHeaderVisibility(actionName)
 
 
-	def setHeaderVisibility(self, actionName) : 
-		column = self.columnList[actionName][0]
-		state = not self.columnList[actionName][1]
-		self.ui.shotgun_tableWidget.setColumnHidden(column, state)
+	# menu part ==========================================================================================
 
+	def showMenu(self, pos) : 
+		widget = 'shotgun_tableWidget'
+		currentSel = self.getSelectionRows(widget)
+		column = currentSel[2]
+
+		if column == self.serverColumn or column == self.publishColumn : 
+			if self.ui.shotgun_tableWidget.currentItem() : 
+				menu=QtGui.QMenu(self)
+				items = ['Show in Explorer']
+
+				if items : 
+					for eachItem in items : 
+						action = QtGui.QAction(eachItem, menu)
+						menu.addAction(action)
+
+					menu.popup(self.ui.shotgun_tableWidget.mapToGlobal(pos))
+					result = menu.exec_(self.ui.shotgun_tableWidget.mapToGlobal(pos))
+					command = result.text()
+
+					if result : 
+						self.menuCommand(command)
+
+
+	def menuCommand(self, command) : 
+		widget = 'shotgun_tableWidget'
+		currentSel = self.getSelectionRows(widget)
+		selColumn = currentSel[2]
+		shotName = self.getDataFromSelectedRange(self.shotColumn, widget)[0]
+		path = ''
+
+		if command == 'Show in Explorer' : 
+
+			if selColumn == self.serverColumn : 
+				path = self.allInfo[shotName]['serverMovie']
+
+			if selColumn == self.publishColumn : 
+				path = self.allInfo[shotName]['publishMovie']
+
+			if os.path.exists(path) : 
+				path = path.replace('/', '\\')
+				subprocess.Popen(r'explorer /select,"%s"' % path)
+
+			else : 
+				self.completeDialog('Information', 'File not exists')
 
 
 	def setLogo(self) : 
